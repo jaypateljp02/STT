@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, Settings, Database, PlusCircle, Key, AlertTriangle, Cpu, HelpCircle } from 'lucide-react';
+import { Mic, Settings, Database, PlusCircle, Key, AlertTriangle } from 'lucide-react';
 import UploadZone from './components/UploadZone';
 import SummaryCard from './components/SummaryCard';
 import DatabaseViewer from './components/DatabaseViewer';
@@ -99,7 +99,7 @@ export default function App() {
         {!apiKeyConfigured && (
           <div className="warning-banner">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <AlertTriangle size={22} style={{ color: '#f59e0b' }} />
+              <AlertTriangle size={22} style={{ color: '#d97706' }} />
               <div>
                 <strong>Gemini API Key Required:</strong> Please configure your API key once to start processing foreign audio.
               </div>
@@ -114,9 +114,9 @@ export default function App() {
         {/* Structured Error Banner (Quota / Key / Error handling) */}
         {errorMsg && (
           <div style={{
-            background: errorType === 'quota' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-            border: errorType === 'quota' ? '1px solid #ef4444' : '1px solid #f59e0b',
-            color: '#fff',
+            background: errorType === 'quota' ? '#fef2f2' : '#fffbeb',
+            border: errorType === 'quota' ? '1px solid #fca5a5' : '1px solid #fde68a',
+            color: errorType === 'quota' ? '#991b1b' : '#92400e',
             padding: '16px 20px',
             borderRadius: '12px',
             marginBottom: '24px',
@@ -127,12 +127,12 @@ export default function App() {
             gap: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <AlertTriangle size={24} style={{ color: errorType === 'quota' ? '#f87171' : '#f59e0b' }} />
+              <AlertTriangle size={24} style={{ color: errorType === 'quota' ? '#dc2626' : '#d97706' }} />
               <div>
                 <strong style={{ fontSize: '1rem', display: 'block', marginBottom: '2px' }}>
                   {errorType === 'quota' ? '🚨 Gemini API Quota / Credit Finished!' : errorType === 'key' ? '🔑 Invalid Gemini API Key' : 'Processing Issue Encountered'}
                 </strong>
-                <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.85)' }}>
+                <span style={{ fontSize: '0.9rem' }}>
                   {errorMsg}
                 </span>
               </div>
@@ -143,8 +143,8 @@ export default function App() {
                 <button
                   onClick={() => setIsSettingsOpen(true)}
                   style={{
-                    background: '#6366f1',
-                    color: '#fff',
+                    background: '#4f46e5',
+                    color: '#ffffff',
                     fontWeight: 700,
                     padding: '8px 16px',
                     borderRadius: '8px',
@@ -157,40 +157,13 @@ export default function App() {
               )}
               <button
                 onClick={() => setErrorMsg('')}
-                style={{ background: 'transparent', color: '#94a3b8', fontSize: '1.2rem', padding: '0 8px' }}
+                style={{ background: 'transparent', color: '#64748b', fontSize: '1.2rem', padding: '0 8px' }}
               >
                 ✕
               </button>
             </div>
           </div>
         )}
-
-        {/* Model Accuracy Tip Box */}
-        <div style={{
-          background: 'rgba(30, 41, 59, 0.4)',
-          border: '1px solid var(--border-color)',
-          padding: '12px 18px',
-          borderRadius: '10px',
-          marginBottom: '20px',
-          display: 'flex',
-          justify: 'space-between',
-          alignItems: 'center',
-          fontSize: '0.86rem',
-          color: 'var(--text-secondary)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <HelpCircle size={16} style={{ color: '#a5b4fc' }} />
-            <span>
-              <strong>Tip for High Accuracy:</strong> If audio is noisy or spoken quickly (e.g. Japanese dialect), open <strong>Settings</strong> and select <strong>Gemini 2.5 Pro</strong> for maximum translation fidelity.
-            </span>
-          </div>
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc', padding: '4px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600 }}
-          >
-            Change Model
-          </button>
-        </div>
 
         {/* Tab 1: New Processing */}
         {activeTab === 'process' && (
