@@ -84,12 +84,12 @@ ${record.transcript_english}
   };
 
   return (
-    <div className="glass-card" style={{ border: '1px solid var(--border-highlight)' }}>
+    <div className="glass-card" style={{ border: '1px solid var(--border-color)' }}>
       {/* Header Info */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{record.title}</h2>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{record.title}</h2>
             <span className="badge badge-lang">
               <Languages size={12} style={{ display: 'inline', marginRight: '4px' }} />
               {record.detected_language}
@@ -123,7 +123,7 @@ ${record.transcript_english}
             {copiedTranscript ? 'Copied Transcript!' : 'Copy English'}
           </button>
 
-          <button onClick={handleDownloadReport} className="btn-copy" style={{ background: 'rgba(255,255,255,0.08)', color: '#fff' }}>
+          <button onClick={handleDownloadReport} className="btn-copy" style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }}>
             <Download size={16} /> Export MD
           </button>
         </div>
@@ -131,8 +131,8 @@ ${record.transcript_english}
 
       {/* Built-In Audio Player */}
       <div style={{
-        background: 'rgba(15, 23, 42, 0.7)',
-        border: '1px solid var(--border-color)',
+        background: '#f8fafc',
+        border: '1px solid #e2e8f0',
         borderRadius: 'var(--radius-md)',
         padding: '14px 18px',
         marginBottom: '20px',
@@ -160,8 +160,8 @@ ${record.transcript_english}
               key={s}
               onClick={() => handleSpeedChange(s)}
               style={{
-                background: playbackSpeed === s ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)',
-                color: playbackSpeed === s ? '#fff' : 'var(--text-secondary)',
+                background: playbackSpeed === s ? 'var(--accent-primary)' : '#e2e8f0',
+                color: playbackSpeed === s ? '#ffffff' : 'var(--text-secondary)',
                 fontSize: '0.78rem',
                 fontWeight: 600,
                 padding: '4px 8px',
@@ -232,7 +232,7 @@ ${record.transcript_english}
       {activeView === 'summary' && (
         <div>
           <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#a5b4fc', marginBottom: '8px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: '8px' }}>
               Executive Summary (Factual & Verified)
             </h3>
             <p style={{ lineHeight: 1.6, color: 'var(--text-primary)', whiteSpace: 'pre-line', fontSize: '0.96rem' }}>
@@ -242,7 +242,7 @@ ${record.transcript_english}
 
           {record.key_takeaways && record.key_takeaways.length > 0 && (
             <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#34d399', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#059669', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <ListChecks size={18} /> Verified Key Takeaways
               </h3>
               <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -257,7 +257,7 @@ ${record.transcript_english}
 
           {record.action_items && record.action_items.length > 0 && (
             <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fbbf24', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#d97706', marginBottom: '10px' }}>
                 Action Items & Decisions
               </h3>
               <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -277,15 +277,15 @@ ${record.transcript_english}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           {/* Left: Original Script */}
           <div style={{
-            background: 'rgba(15, 23, 42, 0.6)',
+            background: '#f8fafc',
             padding: '16px',
             borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-color)',
+            border: '1px solid #e2e8f0',
             maxHeight: '400px',
             overflowY: 'auto'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-              <span style={{ fontWeight: 700, color: '#34d399', fontSize: '0.9rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
+              <span style={{ fontWeight: 700, color: '#059669', fontSize: '0.9rem' }}>
                 Original Language ({record.detected_language})
               </span>
               <button onClick={handleCopyOriginal} className={`btn-copy ${copiedOriginal ? 'copied' : ''}`} style={{ padding: '3px 8px', fontSize: '0.75rem' }}>
@@ -299,15 +299,15 @@ ${record.transcript_english}
 
           {/* Right: English Translation */}
           <div style={{
-            background: 'rgba(15, 23, 42, 0.6)',
+            background: '#f8fafc',
             padding: '16px',
             borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-color)',
+            border: '1px solid #e2e8f0',
             maxHeight: '400px',
             overflowY: 'auto'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-              <span style={{ fontWeight: 700, color: '#a5b4fc', fontSize: '0.9rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
+              <span style={{ fontWeight: 700, color: 'var(--accent-primary)', fontSize: '0.9rem' }}>
                 English Translation
               </span>
               <button onClick={handleCopyTranscript} className={`btn-copy ${copiedTranscript ? 'copied' : ''}`} style={{ padding: '3px 8px', fontSize: '0.75rem' }}>
@@ -324,7 +324,7 @@ ${record.transcript_english}
       {/* View 3: Single Column Transcript */}
       {activeView === 'transcript' && (
         <div style={{
-          background: 'rgba(15, 23, 42, 0.6)',
+          background: '#f8fafc',
           padding: '20px',
           borderRadius: 'var(--radius-md)',
           maxHeight: '450px',
@@ -333,7 +333,7 @@ ${record.transcript_english}
           whiteSpace: 'pre-line',
           fontSize: '0.94rem',
           color: 'var(--text-primary)',
-          border: '1px solid var(--border-color)'
+          border: '1px solid #e2e8f0'
         }}>
           {record.transcript_english}
         </div>
