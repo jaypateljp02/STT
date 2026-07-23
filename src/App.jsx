@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, Settings, Database, PlusCircle, Key, AlertTriangle } from 'lucide-react';
+import { Mic, Settings, Database, PlusCircle, Key, AlertTriangle, Cpu, HelpCircle } from 'lucide-react';
 import UploadZone from './components/UploadZone';
 import SummaryCard from './components/SummaryCard';
 import DatabaseViewer from './components/DatabaseViewer';
@@ -11,6 +11,7 @@ export default function App() {
   const [apiKeyConfigured, setApiKeyConfigured] = useState(true);
   const [currentSummaryRecord, setCurrentSummaryRecord] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [errorType, setErrorType] = useState(''); // 'quota' | 'key' | 'general'
   const [toastMsg, setToastMsg] = useState('');
 
   const checkSettings = () => {
@@ -35,9 +36,23 @@ export default function App() {
     setTimeout(() => setToastMsg(''), 3000);
   };
 
+  const handleProcessError = (errText) => {
+    if (errText.includes('QUOTA_EXHAUSTED')) {
+      setErrorType('quota');
+      setErrorMsg('API Credit / Quota Finished: Your Google Gemini API free quota or credits have been exhausted.');
+    } else if (errText.includes('INVALID_API_KEY')) {
+      setErrorType('key');
+      setErrorMsg('Invalid API Key: The entered Gemini API key is invalid or expired.');
+    } else {
+      setErrorType('general');
+      setErrorMsg(errText);
+    }
+  };
+
   const handleProcessSuccess = (newRecord) => {
     setCurrentSummaryRecord(newRecord);
     setErrorMsg('');
+    setErrorType('');
     triggerToast('Audio translated & summary generated successfully!');
   };
 
@@ -96,23 +111,86 @@ export default function App() {
           </div>
         )}
 
-        {/* Global Error Banner */}
+        {/* Structured Error Banner (Quota / Key / Error handling) */}
         {errorMsg && (
           <div style={{
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            color: '#f87171',
-            padding: '14px 20px',
-            borderRadius: '10px',
+            background: errorType === 'quota' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+            border: errorType === 'quota' ? '1px solid #ef4444' : '1px solid #f59e0b',
+            color: '#fff',
+            padding: '16px 20px',
+            borderRadius: '12px',
             marginBottom: '24px',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px'
           }}>
-            <span>{errorMsg}</span>
-            <button onClick={() => setErrorMsg('')} style={{ background: 'transparent', color: '#f87171', fontWeight: 700 }}>✕</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <AlertTriangle size={24} style={{ color: errorType === 'quota' ? '#f87171' : '#f59e0b' }} />
+              <div>
+                <strong style={{ fontSize: '1rem', display: 'block', marginBottom: '2px' }}>
+                  {errorType === 'quota' ? '🚨 Gemini API Quota / Credit Finished!' : errorType === 'key' ? '🔑 Invalid Gemini API Key' : 'Processing Issue Encountered'}
+                </strong>
+                <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.85)' }}>
+                  {errorMsg}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {(errorType === 'quota' || errorType === 'key') && (
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  style={{
+                    background: '#6366f1',
+                    color: '#fff',
+                    fontWeight: 700,
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <Settings size={14} style={{ display: 'inline', marginRight: '4px' }} />
+                  Update API Key
+                </button>
+              )}
+              <button
+                onClick={() => setErrorMsg('')}
+                style={{ background: 'transparent', color: '#94a3b8', fontSize: '1.2rem', padding: '0 8px' }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
         )}
+
+        {/* Model Accuracy Tip Box */}
+        <div style={{
+          background: 'rgba(30, 41, 59, 0.4)',
+          border: '1px solid var(--border-color)',
+          padding: '12px 18px',
+          borderRadius: '10px',
+          marginBottom: '20px',
+          display: 'flex',
+          justify: 'space-between',
+          alignItems: 'center',
+          fontSize: '0.86rem',
+          color: 'var(--text-secondary)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <HelpCircle size={16} style={{ color: '#a5b4fc' }} />
+            <span>
+              <strong>Tip for High Accuracy:</strong> If audio is noisy or spoken quickly (e.g. Japanese dialect), open <strong>Settings</strong> and select <strong>Gemini 2.5 Pro</strong> for maximum translation fidelity.
+            </span>
+          </div>
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc', padding: '4px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600 }}
+          >
+            Change Model
+          </button>
+        </div>
 
         {/* Tab 1: New Processing */}
         {activeTab === 'process' && (
@@ -120,10 +198,11 @@ export default function App() {
             <UploadZone
               onProcessStart={() => {
                 setErrorMsg('');
+                setErrorType('');
                 setCurrentSummaryRecord(null);
               }}
               onProcessSuccess={handleProcessSuccess}
-              onError={(err) => setErrorMsg(err)}
+              onError={handleProcessError}
             />
 
             {/* Display Active Summary Card when available */}

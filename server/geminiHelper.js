@@ -1,9 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 
-/**
- * Maps common audio file extensions to MIME types
- */
 function getMimeType(filePath) {
   const ext = filePath.split('.').pop().toLowerCase();
   switch (ext) {
@@ -21,13 +18,9 @@ function getMimeType(filePath) {
   }
 }
 
-/**
- * Process audio file using Gemini Multimodal Model with strict non-hallucination guidelines
- * and dual-language transcription (Original Language + English Translation).
- */
 export async function processAudioWithGemini({ apiKey, filePath, modelName = 'gemini-2.5-flash' }) {
   if (!apiKey) {
-    throw new Error('Gemini API Key is missing. Please enter your API Key in Settings.');
+    throw new Error('Gemini API Key is missing. Please click "Settings" to enter your API Key.');
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -36,13 +29,22 @@ export async function processAudioWithGemini({ apiKey, filePath, modelName = 'ge
 
   console.log(`[Gemini] Starting audio processing for ${filePath} (${mimeType}) using model ${modelName}`);
 
-  // Upload file via GoogleAIFileManager
-  const uploadResult = await fileManager.uploadFile(filePath, {
-    mimeType: mimeType,
-    displayName: 'Sony_Audio_Recording',
-  });
-
-  console.log(`[Gemini] File uploaded successfully. URI: ${uploadResult.file.uri}`);
+  let uploadResult;
+  try {
+    uploadResult = await fileManager.uploadFile(filePath, {
+      mimeType: mimeType,
+      displayName: 'Audio_Recording',
+    });
+  } catch (uploadErr) {
+    const errMsg = uploadErr.message || '';
+    if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota')) {
+      throw new Error('QUOTA_EXHAUSTED: Your Gemini API quota or free credits have been exhausted. Please click Settings to use a new API Key or check Google AI Studio.');
+    }
+    if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('400') || errMsg.includes('key not valid')) {
+      throw new Error('INVALID_API_KEY: The Gemini API Key entered is invalid or expired. Please update it in Settings.');
+    }
+    throw new Error(`Upload Failed: ${uploadErr.message}`);
+  }
 
   // Wait for file state to become ACTIVE
   let fileState = await fileManager.getFile(uploadResult.file.name);
@@ -56,7 +58,6 @@ export async function processAudioWithGemini({ apiKey, filePath, modelName = 'ge
     throw new Error('Audio file processing failed on Google Gemini servers.');
   }
 
-  // Model selection fallback
   const selectedModel = modelName || 'gemini-2.5-flash';
   const model = genAI.getGenerativeModel({ model: selectedModel });
 
@@ -67,12 +68,12 @@ The attached audio file contains spoken speech (e.g. Japanese, English, French, 
 CRITICAL FAITHFULNESS MANDATE (ZERO HALLUCINATIONS):
 1. Extract and transcribe ONLY information explicitly spoken in the audio.
 2. DO NOT fabricate names, topics, dates, or details not present in the audio.
-3. If parts of the audio are silent or unintelligible, accurately note "[Unclear Audio]" instead of guessing.
+3. If parts of the audio are silent, noisy, or unintelligible, accurately note "[Unclear Audio]" instead of guessing.
 
 YOUR REQUIRED OUTPUTS:
-1. "detected_language": The exact primary spoken language (e.g. Japanese, English).
-2. "transcript_original": Full verbatim transcript in the ORIGINAL spoken language script (e.g. Japanese Kanji/Kana script if Japanese, or native script).
-3. "transcript_english": Full line-by-line verbatim translation of the transcript into ENGLISH.
+1. "detected_language": Primary spoken language (e.g. Japanese, English).
+2. "transcript_original": Full verbatim transcript in the ORIGINAL spoken language script (e.g. Japanese Kanji/Kana script if Japanese).
+3. "transcript_english": Full verbatim translation of the transcript into ENGLISH.
 4. "summary_english": A concise, strictly factual summary of the audio contents in English.
 5. "key_takeaways": Array of key facts explicitly stated in the audio.
 6. "action_items": Array of specific decisions or next steps mentioned in the audio (if any, otherwise empty array).
@@ -80,8 +81,8 @@ YOUR REQUIRED OUTPUTS:
 YOU MUST RESPOND ONLY IN VALID JSON MATCHING THIS EXACT SCHEMA:
 {
   "detected_language": "Japanese",
-  "transcript_original": "Original spoken transcript in native script...",
-  "transcript_english": "Direct English translation of transcript...",
+  "transcript_original": "Original spoken transcript...",
+  "transcript_english": "English translation...",
   "summary_english": "Factual English summary...",
   "key_takeaways": ["Point 1", "Point 2"],
   "action_items": ["Action 1"]
@@ -102,9 +103,7 @@ DO NOT include markdown codeblocks like \`\`\`json. Output raw JSON string direc
     ]);
 
     const responseText = result.response.text().trim();
-    console.log('[Gemini] Raw response received from Gemini.');
 
-    // Clean up potential codeblock backticks
     let cleanJsonStr = responseText;
     if (cleanJsonStr.startsWith('```')) {
       cleanJsonStr = cleanJsonStr.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim();
@@ -125,13 +124,9 @@ DO NOT include markdown codeblocks like \`\`\`json. Output raw JSON string direc
       };
     }
 
-    // Clean up file from Google AI servers
     try {
       await fileManager.deleteFile(uploadResult.file.name);
-      console.log('[Gemini] Temp file deleted from Google servers.');
-    } catch (delErr) {
-      console.warn('[Gemini] Non-critical error deleting temp file:', delErr.message);
-    }
+    } catch (_) {}
 
     return parsed;
 
@@ -139,6 +134,15 @@ DO NOT include markdown codeblocks like \`\`\`json. Output raw JSON string direc
     try {
       await fileManager.deleteFile(uploadResult.file.name);
     } catch (_) {}
+
+    const msg = error.message || '';
+    if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota')) {
+      throw new Error('QUOTA_EXHAUSTED: Your Gemini API quota or free credits have been exhausted. Please click Settings to enter a new API Key.');
+    }
+    if (msg.includes('API_KEY_INVALID') || msg.includes('400')) {
+      throw new Error('INVALID_API_KEY: The Gemini API Key entered is invalid. Please check your key in Settings.');
+    }
+
     throw new Error(`Gemini Multimodal API Error: ${error.message}`);
   }
 }
