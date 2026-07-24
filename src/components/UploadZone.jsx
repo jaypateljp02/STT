@@ -77,7 +77,19 @@ export default function UploadZone({ onProcessStart, onProcessSuccess, onError }
         body: formData,
       });
 
-      const data = await res.json();
+      // Safely parse JSON or text response to handle HTTP 413 / HTML error pages
+      let data;
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const rawText = await res.text();
+        if (res.status === 413 || rawText.includes('Too Large')) {
+          throw new Error('File payload exceeds direct upload limit (4.5MB on Vercel). Please paste a Google Drive link above to process large audio files!');
+        }
+        throw new Error(rawText || `Server returned status ${res.status}`);
+      }
+
       if (!res.ok || data.error) {
         throw new Error(data.error || 'Failed to process audio');
       }
@@ -123,7 +135,7 @@ export default function UploadZone({ onProcessStart, onProcessSuccess, onError }
 
           {file ? (
             <div>
-              <div className="dropzone-title" style={{ color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <div className="dropzone-title" style={{ color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                 <CheckCircle size={20} /> File Selected: {file.name}
               </div>
               <div className="dropzone-sub">
@@ -144,7 +156,7 @@ export default function UploadZone({ onProcessStart, onProcessSuccess, onError }
 
         {/* OR Google Drive Link Box */}
         <div className="or-divider">
-          <span>OR PASTE GOOGLE DRIVE LINK DIRECTLY</span>
+          <span>OR PASTE GOOGLE DRIVE LINK DIRECTLY (RECOMMENDED FOR LARGE FILES)</span>
         </div>
 
         <div className="form-group" style={{ marginBottom: '20px' }}>
