@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
+import fs from 'fs';
 
 function getMimeType(filePath) {
   const ext = filePath.split('.').pop().toLowerCase();
@@ -24,40 +25,7 @@ export async function processAudioWithGemini({ apiKey, filePath, modelName = 'ge
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const fileManager = new GoogleAIFileManager(apiKey);
   const mimeType = getMimeType(filePath);
-
-  console.log(`[Gemini] Starting audio processing for ${filePath} (${mimeType}) using model ${modelName}`);
-
-  let uploadResult;
-  try {
-    uploadResult = await fileManager.uploadFile(filePath, {
-      mimeType: mimeType,
-      displayName: 'Audio_Recording',
-    });
-  } catch (uploadErr) {
-    const errMsg = uploadErr.message || '';
-    if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota')) {
-      throw new Error('QUOTA_EXHAUSTED: Your Gemini API quota or free credits have been exhausted. Please click Settings to use a new API Key or check Google AI Studio.');
-    }
-    if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('400') || errMsg.includes('key not valid')) {
-      throw new Error('INVALID_API_KEY: The Gemini API Key entered is invalid or expired. Please update it in Settings.');
-    }
-    throw new Error(`Upload Failed: ${uploadErr.message}`);
-  }
-
-  // Wait for file state to become ACTIVE
-  let fileState = await fileManager.getFile(uploadResult.file.name);
-  while (fileState.state === 'PROCESSING') {
-    console.log('[Gemini] File is processing on Google servers, waiting 2 seconds...');
-    await new Promise(res => setTimeout(res, 2000));
-    fileState = await fileManager.getFile(uploadResult.file.name);
-  }
-
-  if (fileState.state === 'FAILED') {
-    throw new Error('Audio file processing failed on Google Gemini servers.');
-  }
-
   const selectedModel = modelName || 'gemini-2.5-flash';
   const model = genAI.getGenerativeModel({ model: selectedModel });
 
@@ -91,17 +59,62 @@ YOU MUST RESPOND ONLY IN VALID JSON MATCHING THIS EXACT SCHEMA:
 DO NOT include markdown codeblocks like \`\`\`json. Output raw JSON string directly.
 `;
 
-  try {
-    const result = await model.generateContent([
-      prompt,
-      {
-        fileData: {
-          fileUri: uploadResult.file.uri,
-          mimeType: uploadResult.file.mimeType,
-        },
-      },
-    ]);
+  const stat = fs.statSync(filePath);
+  const fileSizeInMB = stat.size / (1024 * 1024);
 
+  let audioPart;
+  let fileManager = null;
+  let uploadedFile = null;
+
+  // FAST PATH: For audio files under 20MB, use inline Base64 data (Instant processing, 0 polling wait!)
+  if (fileSizeInMB <= 20) {
+    console.log(`[Gemini] Using fast inline audio transfer for ${filePath} (${fileSizeInMB.toFixed(2)} MB)`);
+    const audioBuffer = fs.readFileSync(filePath);
+    audioPart = {
+      inlineData: {
+        data: audioBuffer.toString('base64'),
+        mimeType: mimeType,
+      },
+    };
+  } else {
+    // LARGE FILE PATH: For files over 20MB, upload via File API
+    console.log(`[Gemini] File is ${fileSizeInMB.toFixed(2)} MB. Uploading via Google AI File Manager...`);
+    fileManager = new GoogleAIFileManager(apiKey);
+    try {
+      uploadedFile = await fileManager.uploadFile(filePath, {
+        mimeType: mimeType,
+        displayName: 'Audio_Recording',
+      });
+    } catch (uploadErr) {
+      const errMsg = uploadErr.message || '';
+      if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota')) {
+        throw new Error('QUOTA_EXHAUSTED: Your Gemini API quota or free credits have been exhausted. Please click Settings to use a new API Key.');
+      }
+      if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('400')) {
+        throw new Error('INVALID_API_KEY: The Gemini API Key entered is invalid. Please update it in Settings.');
+      }
+      throw new Error(`Upload Failed: ${uploadErr.message}`);
+    }
+
+    let fileState = await fileManager.getFile(uploadedFile.file.name);
+    let attempts = 0;
+    while (fileState.state === 'PROCESSING' && attempts < 15) {
+      console.log('[Gemini] Waiting 1s for file processing on Google servers...');
+      await new Promise((res) => setTimeout(res, 1000));
+      fileState = await fileManager.getFile(uploadedFile.file.name);
+      attempts++;
+    }
+
+    audioPart = {
+      fileData: {
+        fileUri: uploadedFile.file.uri,
+        mimeType: uploadedFile.file.mimeType,
+      },
+    };
+  }
+
+  try {
+    const result = await model.generateContent([prompt, audioPart]);
     const responseText = result.response.text().trim();
 
     let cleanJsonStr = responseText;
@@ -124,16 +137,21 @@ DO NOT include markdown codeblocks like \`\`\`json. Output raw JSON string direc
       };
     }
 
-    try {
-      await fileManager.deleteFile(uploadResult.file.name);
-    } catch (_) {}
+    // Clean up temp file on Google servers if File API was used
+    if (fileManager && uploadedFile) {
+      try {
+        await fileManager.deleteFile(uploadedFile.file.name);
+      } catch (_) {}
+    }
 
     return parsed;
 
   } catch (error) {
-    try {
-      await fileManager.deleteFile(uploadResult.file.name);
-    } catch (_) {}
+    if (fileManager && uploadedFile) {
+      try {
+        await fileManager.deleteFile(uploadedFile.file.name);
+      } catch (_) {}
+    }
 
     const msg = error.message || '';
     if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota')) {
